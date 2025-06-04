@@ -2,7 +2,7 @@ from typing import Literal
 
 from requests import get
 
-from swiftshadow.helpers import plaintextToProxies
+from swiftshadow.helpers import GenericPlainTextProxyProvider
 from swiftshadow.models import Provider, Proxy
 from swiftshadow.types import MonosansProxyDict
 from swiftshadow.validator import validate_proxies
@@ -38,11 +38,10 @@ async def Monosans(
 async def Thespeedx(
     countries: list[str] = [], protocol: Literal["http", "https"] = "http"
 ):
-    raw: str = get(
-        "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt"
-    ).text
-    proxies: list[Proxy] = plaintextToProxies(raw, protocol="http")
-    results = await validate_proxies(proxies)
+    results = await GenericPlainTextProxyProvider(
+        url="https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt",
+        protocol="http",
+    )
     return results
 
 
@@ -83,62 +82,52 @@ async def GoodProxy(
 async def OpenProxyList(
     countries: list[str] = [], protocol: Literal["http", "https"] = "http"
 ):
-    raw = get("https://api.openproxylist.xyz/http.txt").text
-    proxies: list[Proxy] = plaintextToProxies(raw, protocol="http")
-    results = await validate_proxies(proxies)
+    results = await GenericPlainTextProxyProvider(
+        "https://api.openproxylist.xyz/http.txt", "http"
+    )
     return results
 
 
 async def MuRongPIG(
     countries: list[str] = [], protocol: Literal["http", "https"] = "http"
 ):
-    raw = get(
-        "https://raw.githubusercontent.com/MuRongPIG/Proxy-Master/refs/heads/main/http_checked.txt"
-    ).text
-    proxies: list[Proxy] = plaintextToProxies(raw, protocol="http")
-    results = await validate_proxies(proxies)
+    results = await GenericPlainTextProxyProvider(
+        "https://raw.githubusercontent.com/MuRongPIG/Proxy-Master/refs/heads/main/http_checked.txt",
+        "http",
+    )
     return results
 
 
 async def KangProxy(
     countries: list[str] = [], protocol: Literal["http", "https"] = "http"
 ):
-    raw = get(
-        f"https://github.com/officialputuid/KangProxy/raw/refs/heads/KangProxy/{protocol}/{protocol}.txt"
-    ).text
-    proxies: list[Proxy] = plaintextToProxies(raw, protocol=protocol)
-    results = await validate_proxies(proxies)
+    url = f"https://github.com/officialputuid/KangProxy/raw/refs/heads/KangProxy/{protocol}/{protocol}.txt"
+    results = await GenericPlainTextProxyProvider(url, protocol)
     return results
 
 
 async def Mmpx12(
     countries: list[str] = [], protocol: Literal["http", "https"] = "http"
 ):
-    raw = get(
-        f"https://github.com/mmpx12/proxy-list/raw/refs/heads/master/{protocol}.txt"
-    ).text
-    proxies: list[Proxy] = plaintextToProxies(raw, protocol=protocol)
-    results = await validate_proxies(proxies)
+    url = f"https://github.com/mmpx12/proxy-list/raw/refs/heads/master/{protocol}.txt"
+    results = await GenericPlainTextProxyProvider(url, protocol)
     return results
 
 
 async def Anonym0usWork1221(
     countries: list[str] = [], protocol: Literal["http", "https"] = "http"
 ):
-    raw = get(
-        f"https://github.com/Anonym0usWork1221/Free-Proxies/raw/refs/heads/main/proxy_files/{protocol}_proxies.txt"
-    ).text
-    proxies: list[Proxy] = plaintextToProxies(raw, protocol=protocol)
-    results = await validate_proxies(proxies)
+    url = f"https://github.com/Anonym0usWork1221/Free-Proxies/raw/refs/heads/main/proxy_files/{protocol}_proxies.txt"
+    results = await GenericPlainTextProxyProvider(url, protocol)
     return results
 
 
 async def ProxySpace(
     countries: list[str] = [], protocol: Literal["http", "https"] = "http"
 ):
-    raw = get("https://proxyspace.pro/http.txt").text
-    proxies: list[Proxy] = plaintextToProxies(raw, protocol="http")
-    results = await validate_proxies(proxies)
+    results = await GenericPlainTextProxyProvider(
+        "https://proxyspace.pro/http.txt", "http"
+    )
     return results
 
 

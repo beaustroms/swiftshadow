@@ -2,9 +2,9 @@ from datetime import datetime
 from typing import Literal
 
 from requests import get
-from aiohttp import ClientSession
 
 from swiftshadow.models import Proxy
+from swiftshadow.validator import validate_proxies
 
 
 def checkProxy(proxy):
@@ -37,3 +37,12 @@ def plaintextToProxies(text: str, protocol: Literal["http", "https"]) -> list[Pr
         proxy = Proxy(ip=ip, port=int(port), protocol=protocol)
         proxies.append(proxy)
     return proxies
+
+
+async def GenericPlainTextProxyProvider(
+    url: str, protocol: Literal["http", "https"] = "http"
+) -> list[Proxy]:
+    raw: str = get(url).text
+    proxies: list[Proxy] = plaintextToProxies(raw, protocol=protocol)
+    results = await validate_proxies(proxies)
+    return results
