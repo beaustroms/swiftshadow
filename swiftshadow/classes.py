@@ -1,19 +1,20 @@
-from datetime import datetime
-from random import choice
-from typing import Literal
-from pathlib import Path
-from appdirs import user_cache_dir
-from logging import FileHandler, getLogger, Formatter, StreamHandler, INFO, DEBUG
-from sys import stdout
-from pickle import load, dump, loads, dumps
-from swiftshadow.cache import checkExpiry, getExpiry
-from swiftshadow.models import CacheData, Proxy as Proxy
-
-from swiftshadow.exceptions import UnsupportedProxyProtocol
-from swiftshadow.providers import Providers
 from asyncio import run
-import aiofiles
+from datetime import datetime
+from logging import DEBUG, INFO, FileHandler, Formatter, StreamHandler, getLogger
+from pathlib import Path
+from pickle import dump, dumps, load, loads
+from random import choice
+from sys import stdout
+from typing import Literal
 
+import aiofiles
+from appdirs import user_cache_dir
+
+from swiftshadow.cache import checkExpiry, getExpiry
+from swiftshadow.exceptions import UnsupportedProxyProtocol
+from swiftshadow.models import CacheData
+from swiftshadow.models import Proxy as Proxy
+from swiftshadow.providers import Providers
 
 logger = getLogger("swiftshadow")
 logger.setLevel(INFO)
@@ -87,7 +88,9 @@ class ProxyInterface:
 
         if protocol not in ["https", "http"]:
             raise UnsupportedProxyProtocol(
-                f"Protocol {protocol} is not supported by swiftshadow, please choose between HTTP or HTTPS"
+                f"Protocol {
+                    protocol
+                } is not supported by swiftshadow, please choose between HTTP or HTTPS"
             )
         self.protocol: Literal["https", "http"] = protocol
 
@@ -143,7 +146,9 @@ class ProxyInterface:
                     self.proxies = cache.proxies
                     logger.info("Loaded proxies from cache.")
                     logger.debug(
-                        f"Cache with {len(cache.proxies)} proxies, expire in {cache.expiryIn}"
+                        f"Cache with {len(cache.proxies)} proxies, expire in {
+                            cache.expiryIn
+                        }"
                     )
                     self.current = self.proxies[0]
                     self.cacheExpiry = cache.expiryIn
@@ -165,7 +170,9 @@ class ProxyInterface:
                 self.countries, self.protocol
             )
             logger.debug(
-                f"{len(providerProxies)} proxies from {provider.providerFunction.__name__}"
+                f"{len(providerProxies)} proxies from {
+                    provider.providerFunction.__name__
+                }"
             )
             self.proxies.extend(providerProxies)
 
@@ -208,7 +215,9 @@ class ProxyInterface:
                     self.proxies = cache.proxies
                     logger.info("Loaded proxies from cache.")
                     logger.debug(
-                        f"Cache with {len(cache.proxies)} proxies, expire in {cache.expiryIn}"
+                        f"Cache with {len(cache.proxies)} proxies, expire in {
+                            cache.expiryIn
+                        }"
                     )
                     self.current = self.proxies[0]
                     logger.debug(f"Cache set to expire at {cache.expiryIn}")
@@ -230,7 +239,9 @@ class ProxyInterface:
                 provider.providerFunction(self.countries, self.protocol)
             )
             logger.debug(
-                f"{len(providerProxies)} proxies from {provider.providerFunction.__name__}"
+                f"{len(providerProxies)} proxies from {
+                    provider.providerFunction.__name__
+                }"
             )
             self.proxies.extend(providerProxies)
 

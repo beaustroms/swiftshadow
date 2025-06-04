@@ -1,10 +1,8 @@
 from typing import Literal
 
-import aiohttp
-import asyncio
 from requests import get
 
-from swiftshadow.helpers import JsonPostRequest, plaintextToProxies
+from swiftshadow.helpers import plaintextToProxies
 from swiftshadow.models import Provider, Proxy
 from swiftshadow.types import MonosansProxyDict
 from swiftshadow.validator import validate_proxies
@@ -144,46 +142,6 @@ async def ProxySpace(
     return results
 
 
-async def ProxyDB(
-    countries: list[str] = [], protocol: Literal["http", "https"] = "http"
-):
-    api_url = "https://proxydb.net/list"
-    async with aiohttp.ClientSession() as session:
-        initial_resp = await session.post(
-            api_url, json={"anonlvls": [], "offset": 0, "protocols": [protocol]}
-        )
-        initial = await initial_resp.json()
-
-        total_pages = int(initial["total_count"] / 30) + 1
-
-        tasks = []
-        for i in range(0, total_pages):
-            task = asyncio.create_task(
-                coro=JsonPostRequest(
-                    session,
-                    api_url,
-                    json={"anonlvls": [], "offset": i * 30, "protocols": [protocol]},
-                )
-            )
-            tasks.append(task)
-        pages = await asyncio.gather(*tasks)
-        proxies: list[Proxy] = []
-        for page in pages:
-            proxy_dicts = page["proxies"]
-            for proxy_dict in proxy_dicts:
-                rate = proxy_dict["checks_success"] / proxy_dict["checks_total"]
-                if rate < 0.75:
-                    continue
-                if countries != [] and proxy_dict["ccode"] not in countries:
-                    continue
-                proxy = Proxy(
-                    ip=proxy_dict["ip"], protocol=protocol, port=proxy_dict["port"]
-                )
-                proxies.append(proxy)
-        results = await validate_proxies(proxies)
-        return results
-
-
 Providers: list[Provider] = [
     Provider(providerFunction=ProxyScrape, countryFilter=True, protocols=["http"]),
     Provider(providerFunction=Monosans, countryFilter=True, protocols=["http"]),
@@ -201,5 +159,4 @@ Providers: list[Provider] = [
     ),
     Provider(providerFunction=ProxySpace, countryFilter=False, protocols=["http"]),
     Provider(providerFunction=OpenProxyList, countryFilter=False, protocols=["http"]),
-    Provider(providerFunction=ProxyDB, countryFilter=True, protocols=["http", "https"]),
 ]
