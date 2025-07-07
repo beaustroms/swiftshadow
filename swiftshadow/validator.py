@@ -46,7 +46,7 @@ async def check_proxy(
     async_session: aiohttp.ClientSession, proxy: Proxy, checker: str
 ) -> str:
     """
-    Check one proxy abject.
+    Check one proxy object.
 
     Args:
         async_session: aiohttp client session object
