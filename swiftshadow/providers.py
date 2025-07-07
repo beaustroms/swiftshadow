@@ -1,11 +1,14 @@
 from typing import Literal
+import aiohttp
 
 from requests import get
 
-from swiftshadow.helpers import plaintextToProxies
+from swiftshadow.helpers import GenericPlainTextProxyProvider
 from swiftshadow.models import Provider, Proxy
+from asyncio import create_task, gather
 from swiftshadow.types import MonosansProxyDict
 from swiftshadow.validator import validate_proxies
+from lxml import etree
 
 
 async def Monosans(
@@ -38,11 +41,10 @@ async def Monosans(
 async def Thespeedx(
     countries: list[str] = [], protocol: Literal["http", "https"] = "http"
 ):
-    raw: str = get(
-        "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt"
-    ).text
-    proxies: list[Proxy] = plaintextToProxies(raw, protocol="http")
-    results = await validate_proxies(proxies)
+    results = await GenericPlainTextProxyProvider(
+        url="https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt",
+        protocol="http",
+    )
     return results
 
 
@@ -83,63 +85,91 @@ async def GoodProxy(
 async def OpenProxyList(
     countries: list[str] = [], protocol: Literal["http", "https"] = "http"
 ):
-    raw = get("https://api.openproxylist.xyz/http.txt").text
-    proxies: list[Proxy] = plaintextToProxies(raw, protocol="http")
-    results = await validate_proxies(proxies)
+    results = await GenericPlainTextProxyProvider(
+        "https://api.openproxylist.xyz/http.txt", "http"
+    )
     return results
 
 
 async def MuRongPIG(
     countries: list[str] = [], protocol: Literal["http", "https"] = "http"
 ):
-    raw = get(
-        "https://raw.githubusercontent.com/MuRongPIG/Proxy-Master/refs/heads/main/http_checked.txt"
-    ).text
-    proxies: list[Proxy] = plaintextToProxies(raw, protocol="http")
-    results = await validate_proxies(proxies)
-    return results
-
-
-async def KangProxy(
-    countries: list[str] = [], protocol: Literal["http", "https"] = "http"
-):
-    raw = get(
-        f"https://github.com/officialputuid/KangProxy/raw/refs/heads/KangProxy/{protocol}/{protocol}.txt"
-    ).text
-    proxies: list[Proxy] = plaintextToProxies(raw, protocol=protocol)
-    results = await validate_proxies(proxies)
+    results = await GenericPlainTextProxyProvider(
+        "https://raw.githubusercontent.com/MuRongPIG/Proxy-Master/refs/heads/main/http_checked.txt",
+        "http",
+    )
     return results
 
 
 async def Mmpx12(
     countries: list[str] = [], protocol: Literal["http", "https"] = "http"
 ):
-    raw = get(
-        f"https://github.com/mmpx12/proxy-list/raw/refs/heads/master/{protocol}.txt"
-    ).text
-    proxies: list[Proxy] = plaintextToProxies(raw, protocol=protocol)
-    results = await validate_proxies(proxies)
+    url = f"https://github.com/mmpx12/proxy-list/raw/refs/heads/master/{protocol}.txt"
+    results = await GenericPlainTextProxyProvider(url, protocol)
     return results
 
 
 async def Anonym0usWork1221(
     countries: list[str] = [], protocol: Literal["http", "https"] = "http"
 ):
-    raw = get(
-        f"https://github.com/Anonym0usWork1221/Free-Proxies/raw/refs/heads/main/proxy_files/{protocol}_proxies.txt"
-    ).text
-    proxies: list[Proxy] = plaintextToProxies(raw, protocol=protocol)
-    results = await validate_proxies(proxies)
+    url = f"https://github.com/Anonym0usWork1221/Free-Proxies/raw/refs/heads/main/proxy_files/{protocol}_proxies.txt"
+    results = await GenericPlainTextProxyProvider(url, protocol)
     return results
 
 
 async def ProxySpace(
     countries: list[str] = [], protocol: Literal["http", "https"] = "http"
 ):
-    raw = get("https://proxyspace.pro/http.txt").text
-    proxies: list[Proxy] = plaintextToProxies(raw, protocol="http")
-    results = await validate_proxies(proxies)
+    results = await GenericPlainTextProxyProvider(
+        "https://proxyspace.pro/http.txt", "http"
+    )
     return results
+
+
+async def ProxyDB(
+    countries: list[str] = [], protocol: Literal["http", "https"] = "http"
+):
+    base_url = f"https://www.proxydb.net/?protocol={protocol}&sort_column_id=uptime&sort_order_desc=true"
+    proxies: list[Proxy] = []
+    raw = get(base_url).text
+    total = int(
+        raw.split("Showing")[-1].split("total proxies")[0].split("of")[-1].strip()
+    )
+
+    async def parsePage(session: aiohttp.ClientSession, url: str):
+        proxies = []
+        async with session.get(url) as resp:
+            raw = await resp.text()
+            exml = etree.HTML(raw)
+            table = exml.find("body/div/div/table/tbody")
+            rows = iter(table)
+            for row in rows:
+                if len(proxies) > 500:
+                    break
+                data = []
+                for td in row[:4]:
+                    text = td.text.strip()
+                    if text == "":
+                        text = list(td)[-1].text
+                        data.append(text)
+                if countries != [] and data[-1] not in countries:
+                    continue
+                proxy = Proxy(data[0], protocol, data[1])
+                proxies.append(proxy)
+        return proxies
+
+    tasks = []
+    async with aiohttp.ClientSession() as session:
+        for offset in range(0, total, 30):
+            url = base_url + f"&offset={offset}"
+            task = create_task(coro=parsePage(session, url))
+            tasks.append(task)
+        results = await gather(*tasks, return_exceptions=True)
+    for result in results:
+        if isinstance(result, BaseException):
+            continue
+        proxies.extend(result)
+    return proxies
 
 
 Providers: list[Provider] = [
@@ -154,9 +184,7 @@ Providers: list[Provider] = [
     ),
     Provider(providerFunction=Mmpx12, countryFilter=False, protocols=["http", "https"]),
     Provider(providerFunction=GoodProxy, countryFilter=False, protocols=["http"]),
-    Provider(
-        providerFunction=KangProxy, countryFilter=False, protocols=["http", "https"]
-    ),
     Provider(providerFunction=ProxySpace, countryFilter=False, protocols=["http"]),
     Provider(providerFunction=OpenProxyList, countryFilter=False, protocols=["http"]),
+    Provider(providerFunction=ProxyDB, countryFilter=True, protocols=["http", "https"]),
 ]
