@@ -98,14 +98,6 @@ async def MuRongPIG(
     return results
 
 
-async def KangProxy(
-    countries: list[str] = [], protocol: Literal["http", "https"] = "http"
-):
-    url = f"https://github.com/officialputuid/KangProxy/raw/refs/heads/KangProxy/{protocol}/{protocol}.txt"
-    results = await GenericPlainTextProxyProvider(url, protocol)
-    return results
-
-
 async def Mmpx12(
     countries: list[str] = [], protocol: Literal["http", "https"] = "http"
 ):
@@ -143,9 +135,6 @@ Providers: list[Provider] = [
     ),
     Provider(providerFunction=Mmpx12, countryFilter=False, protocols=["http", "https"]),
     Provider(providerFunction=GoodProxy, countryFilter=False, protocols=["http"]),
-    Provider(
-        providerFunction=KangProxy, countryFilter=False, protocols=["http", "https"]
-    ),
     Provider(providerFunction=ProxySpace, countryFilter=False, protocols=["http"]),
     Provider(providerFunction=OpenProxyList, countryFilter=False, protocols=["http"]),
 ]
