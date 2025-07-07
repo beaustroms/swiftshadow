@@ -42,21 +42,24 @@ async def get_host_ip(async_session: aiohttp.ClientSession) -> str | None:
         return ip
 
 
-async def check_proxy(async_session: aiohttp.ClientSession, proxy: Proxy) -> str:
+async def check_proxy(
+    async_session: aiohttp.ClientSession, proxy: Proxy, checker: str
+) -> str:
     """
     Check one proxy abject.
 
     Args:
         async_session: aiohttp client session object
         proxy: Proxy Object
+        checker: Proxy checker API.
 
     Returns:
         text: API response text
     """
     async with async_session.get(
-        url="http://checkip.amazonaws.com",
+        url=f"{proxy.protocol}://{checker}",
         proxy=proxy.as_string(),
-        timeout=4,
+        timeout=5,
         ssl=False,
     ) as response:
         text = await response.text()
@@ -74,16 +77,33 @@ async def validate_proxies(proxies: list[Proxy]) -> list[Proxy]:
         working_proxies: List of working Proxies
     """
     working_proxies: list[Proxy] = []
-    async with aiohttp.ClientSession() as async_session:
+    checkers = [
+        "checkip.amazonaws.com",
+        "ipinfo.io/ip",
+        "api.ipify.org/",
+        "whatsmyip.dev/api/ip",
+        "ip4.anysrc.net/banner",
+        "api4.my-ip.io/v2/ip.txt",
+        "api.myip.la",
+        "api.seeip.org",
+        "ips.im/api",
+        "ifconfig.me/ip",
+        "myip.expert/api/",
+        "checkip.info/ip",
+        "api.myip.com",
+    ]
+    total_checkers = len(checkers)
+    tcp_connection = aiohttp.TCPConnector(limit=100)
+    async with aiohttp.ClientSession(connector=tcp_connection) as async_session:
         tasks = []
 
         host_task = asyncio.create_task(coro=get_host_ip(async_session))
         tasks.append(host_task)
 
-        for proxy in proxies:
-            task = asyncio.create_task(coro=check_proxy(async_session, proxy))
+        for idx, proxy in enumerate(proxies):
+            checker = checkers[idx % total_checkers]
+            task = asyncio.create_task(coro=check_proxy(async_session, proxy, checker))
             tasks.append(task)
-
         results = await asyncio.gather(*tasks, return_exceptions=True)
         host_ip = results[0]
         results = results[1:]
