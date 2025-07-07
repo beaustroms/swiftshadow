@@ -1,11 +1,14 @@
 from typing import Literal
+import aiohttp
 
 from requests import get
 
 from swiftshadow.helpers import GenericPlainTextProxyProvider
 from swiftshadow.models import Provider, Proxy
+from asyncio import create_task, gather
 from swiftshadow.types import MonosansProxyDict
 from swiftshadow.validator import validate_proxies
+from lxml import etree
 
 
 async def Monosans(
@@ -123,6 +126,52 @@ async def ProxySpace(
     return results
 
 
+async def ProxyDB(
+    countries: list[str] = [], protocol: Literal["http", "https"] = "http"
+):
+    base_url = f"https://www.proxydb.net/?protocol={protocol}&sort_column_id=uptime&sort_order_desc=true"
+    proxies: list[Proxy] = []
+    raw = get(base_url).text
+    total = int(
+        raw.split("Showing")[-1].split("total proxies")[0].split("of")[-1].strip()
+    )
+
+    async def parsePage(session: aiohttp.ClientSession, url: str):
+        proxies = []
+        async with session.get(url) as resp:
+            raw = await resp.text()
+            exml = etree.HTML(raw)
+            table = exml.find("body/div/div/table/tbody")
+            rows = iter(table)
+            for row in rows:
+                if len(proxies) > 500:
+                    break
+                data = []
+                for td in row[:4]:
+                    text = td.text.strip()
+                    if text == "":
+                        text = list(td)[-1].text
+                        data.append(text)
+                if countries != [] and data[-1] not in countries:
+                    continue
+                proxy = Proxy(data[0], protocol, data[1])
+                proxies.append(proxy)
+        return proxies
+
+    tasks = []
+    async with aiohttp.ClientSession() as session:
+        for offset in range(0, total, 30):
+            url = base_url + f"&offset={offset}"
+            task = create_task(coro=parsePage(session, url))
+            tasks.append(task)
+        results = await gather(*tasks, return_exceptions=True)
+    for result in results:
+        if isinstance(result, BaseException):
+            continue
+        proxies.extend(result)
+    return proxies
+
+
 Providers: list[Provider] = [
     Provider(providerFunction=ProxyScrape, countryFilter=True, protocols=["http"]),
     Provider(providerFunction=Monosans, countryFilter=True, protocols=["http"]),
@@ -137,4 +186,5 @@ Providers: list[Provider] = [
     Provider(providerFunction=GoodProxy, countryFilter=False, protocols=["http"]),
     Provider(providerFunction=ProxySpace, countryFilter=False, protocols=["http"]),
     Provider(providerFunction=OpenProxyList, countryFilter=False, protocols=["http"]),
+    Provider(providerFunction=ProxyDB, countryFilter=True, protocols=["http", "https"]),
 ]
